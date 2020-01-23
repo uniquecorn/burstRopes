@@ -34,12 +34,7 @@ public class Rope : MonoBehaviour
         Render();
     }
 
-    public void RopeFixedUpdate()
-    {
-        SimulateBurst();
-    }
-
-    private void SimulateBurst()
+    public JobHandle SimulateBurst()
     {
         IRopeSimulate ropeSimulation = new IRopeSimulate
         {
@@ -56,7 +51,7 @@ public class Rope : MonoBehaviour
             useTarget = this.useTarget,
             segmentLength = this.segmentLength
         };
-        constraintSim.Schedule(x).Complete();
+        return constraintSim.Schedule(x);
     }
     void OnDestroy()
     {
