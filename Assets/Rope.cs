@@ -40,14 +40,14 @@ public class Rope : MonoBehaviour
         {
             fixedDeltaTime = Time.fixedDeltaTime,
             segments = ropeSegments,
-            pos = (Vector2)transform.position
+            pos = transform.position
         };
         JobHandle x = ropeSimulation.Schedule(ropeSegments.Length, 16);
         IConstraintJob constraintSim = new IConstraintJob
         {
             segments = ropeSegments,
-            pos = (Vector2)transform.position,
-            pos2 = (Vector2)target.transform.position,
+            pos = transform.position,
+            pos2 = target.transform.position,
             useTarget = this.useTarget,
             segmentLength = this.segmentLength
         };
@@ -75,30 +75,30 @@ public class Rope : MonoBehaviour
 
     public struct RopeSegment
     {
-        public float2 posNow;
-        public float2 posOld;
+        public float3 posNow;
+        public float3 posOld;
 
-        public RopeSegment(Vector2 pos)
+        public RopeSegment(Vector3 pos)
         {
             posNow = pos;
             posOld = pos;
         }
         public Vector3 Pos()
         {
-            return new Vector3(posNow.x, posNow.y, 0);
+            return posNow;
         }
     }
     [BurstCompile(CompileSynchronously = true)]
     public struct IRopeSimulate : IJobParallelFor
     {
-        public float2 pos, pos2;
+        public float3 pos, pos2;
         public NativeArray<RopeSegment> segments;
         public float fixedDeltaTime;
         public void Execute(int index)
         {
-            float2 gravity = new float2(0, -1);
+            float3 gravity = new float3(0, -1, 0);
             RopeSegment segment = segments[index];
-            float2 velocity = segment.posNow - segment.posOld;
+            float3 velocity = segment.posNow - segment.posOld;
             segment.posOld = segment.posNow;
             segment.posNow += velocity;
             segment.posNow += gravity * fixedDeltaTime;
@@ -108,19 +108,19 @@ public class Rope : MonoBehaviour
     [BurstCompile(CompileSynchronously = true)]
     public struct IConstraintJob : IJob
     {
-        public float2 pos, pos2;
+        public float3 pos, pos2;
         public NativeArray<RopeSegment> segments;
         public bool useTarget;
         public float segmentLength;
         public void Execute()
         {
             RopeSegment firstSegment = this.segments[0];
-            firstSegment.posNow = new float2(pos.x, pos.y);
+            firstSegment.posNow = new float3(pos.x, pos.y, pos.z);
             segments[0] = firstSegment;
             if (useTarget)
             {
                 RopeSegment endSegment = this.segments[segments.Length - 1];
-                endSegment.posNow = new float2(pos2.x, pos2.y);
+                endSegment.posNow = new float3(pos2.x, pos2.y, pos2.z);
                 segments[segments.Length - 1] = endSegment;
             }
             for (int j = 0; j < 50; j++)
@@ -129,10 +129,10 @@ public class Rope : MonoBehaviour
                 {
                     RopeSegment firstSeg = segments[i];
                     RopeSegment secondSeg = segments[i + 1];
-                    float2 dir = firstSeg.posNow - secondSeg.posNow;
-                    float dist = math.sqrt(dir.x * dir.x + dir.y * dir.y);
+                    float3 dir = firstSeg.posNow - secondSeg.posNow;
+                    float dist = math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
                     float error = math.abs(dist - segmentLength);
-                    float2 changeDir = float2.zero;
+                    float3 changeDir = float3.zero;
                     if (dist > segmentLength)
                     {
                         changeDir = math.normalize(firstSeg.posNow - secondSeg.posNow);
@@ -141,7 +141,7 @@ public class Rope : MonoBehaviour
                     {
                         changeDir = math.normalize(secondSeg.posNow - firstSeg.posNow);
                     }
-                    float2 changeAmount = changeDir * error;
+                    float3 changeAmount = changeDir * error;
                     if (i > 0)
                     {
                         firstSeg.posNow -= changeAmount * 0.5f;
